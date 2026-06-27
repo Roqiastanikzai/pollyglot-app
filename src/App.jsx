@@ -2,11 +2,7 @@ import { useState } from 'react'
 import './App.css'
 
 function App() {
-  const languageCodes = {
-    French: 'fr',
-    Spanish: 'es',
-    Japanese: 'ja',
-  }
+  const WORKER_URL = 'https://dark-grass-6868.raqibstanikzai367.workers.dev'
   const [textInput, setTextInput] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('French')
   const [chatHistory, setChatHistory] = useState([])
@@ -21,40 +17,28 @@ function App() {
       return
     }
 
-    const target = languageCodes[selectedLanguage]
-    if (!target) {
-      setErrorMessage('Selected language is not supported.')
-      return
-    }
-
     setIsLoading(true)
     try {
-      const response = await fetch(
-        'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(textInput) + '&langpair=en|' + target
-      )
-      if (!response.ok) {
-        throw new Error(`Translation API request failed with status ${response.status}`)
-      }
-
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textInput, language: selectedLanguage }),
+      })
       const data = await response.json()
-      const translation = data?.responseData?.translatedText?.trim()
-      if (!translation) {
-        throw new Error('Invalid response from the translation service.')
-      }
+      if (data.error) throw new Error(data.error)
 
       setChatHistory([
         { type: 'user', label: 'Original Text', content: textInput },
         {
           type: 'ai',
           label: `Your Translation (${selectedLanguage})`,
-          content: translation,
-        },
+          content: data.translation
+        }
       ])
       setShowResults(true)
     } catch (error) {
       console.error(error)
-      const message = error?.message || 'Unknown translation error'
-      setErrorMessage(`Translation error: ${message}`)
+      setErrorMessage('Error: Cannot connect to API server. Did you set your correct URL?')
     } finally {
       setIsLoading(false)
     }
